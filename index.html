@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>واتساب أطفال 🧒</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+    <!-- شاشة البداية -->
+    <div id="splash-screen" class="splash-screen">
+        <div class="splash-content">
+            <div class="splash-logo">🧸</div>
+            <h1 class="splash-title">واتساب أطفال</h1>
+            <p class="splash-subtitle">مرحباً بك في عالم المحادثات!</p>
+            <div class="splash-loader">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- التطبيق الرئيسي -->
+    <div id="app" class="app hidden">
+        <!-- الشريط العلوي -->
+        <header class="app-header">
+            <div class="header-right">
+                <div class="header-logo">🧸</div>
+                <h1>واتساب أطفال</h1>
+            </div>
+            <div class="header-left">
+                <button class="icon-btn" onclick="showSearch()">🔍</button>
+                <button class="icon-btn" onclick="showSettings()">⚙️</button>
+            </div>
+        </header>
+
+        <!-- شريط البحث -->
+        <div id="search-bar" class="search-bar hidden">
+            <input type="text" placeholder="ابحث عن محادثة..." oninput="searchChat(this.value)">
+            <button class="search-close" onclick="hideSearch()">✕</button>
+        </div>
+
+        <!-- قائمة المحادثات -->
+        <div id="chat-list" class="chat-list">
+            <!-- المحادثات ستظهر هنا -->
+        </div>
+
+        <!-- زر إضافة محادثة جديدة -->
+        <button class="fab-btn" onclick="showNewChat()">
+            <span>💬</span>
+        </button>
+
+        <!-- نافذة المحادثة -->
+        <div id="chat-view" class="chat-view hidden">
+            <div class="chat-header">
+                <button class="back-btn" onclick="goBack()">→</button>
+                <div class="chat-user-info">
+                    <div class="chat-avatar" id="chat-avatar"></div>
+                    <div>
+                        <h3 id="chat-name"></h3>
+                        <span class="online-status" id="online-status">متصل الآن 🟢</span>
+                    </div>
+                </div>
+                <button class="icon-btn" onclick="showChatInfo()">ℹ️</button>
+                <button class="icon-btn call-icon" onclick="startVoiceCall()" title="مكالمة صوتية">📞</button>
+                <button class="icon-btn call-icon" onclick="startVideoCall()" title="مكالمة فيديو">📹</button>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <!-- الرسائل ستظهر هنا -->
+            </div>
+            <div class="chat-input-area">
+                <div class="emoji-picker-btn" onclick="toggleEmojiPicker()">😊</div>
+                <input type="text" id="message-input" placeholder="اكتب رسالة..." onkeypress="handleKeyPress(event)">
+                <button class="send-btn" onclick="sendMessage()">
+                    <span>🕊️</span>
+                </button>
+            </div>
+            <!-- لوحة الإيموجي -->
+            <div id="emoji-picker" class="emoji-picker hidden">
+                <div class="emoji-grid">
+                    <span onclick="addEmoji('😀')">😀</span>
+                    <span onclick="addEmoji('😂')">😂</span>
+                    <span onclick="addEmoji('😍')">😍</span>
+                    <span onclick="addEmoji('🥰')">🥰</span>
+                    <span onclick="addEmoji('😊')">😊</span>
+                    <span onclick="addEmoji('🤗')">🤗</span>
+                    <span onclick="addEmoji('😎')">😎</span>
+                    <span onclick="addEmoji('🤩')">🤩</span>
+                    <span onclick="addEmoji('😇')">😇</span>
+                    <span onclick="addEmoji('🥳')">🥳</span>
+                    <span onclick="addEmoji('😢')">😢</span>
+                    <span onclick="addEmoji('😭')">😭</span>
+                    <span onclick="addEmoji('😡')">😡</span>
+                    <span onclick="addEmoji('🤔')">🤔</span>
+                    <span onclick="addEmoji('🤫')">🤫</span>
+                    <span onclick="addEmoji('🤗')">🤗</span>
+                    <span onclick="addEmoji('👍')">👍</span>
+                    <span onclick="addEmoji('👋')">👋</span>
+                    <span onclick="addEmoji('✌️')">✌️</span>
+                    <span onclick="addEmoji('🤞')">🤞</span>
+                    <span onclick="addEmoji('❤️')">❤️</span>
+                    <span onclick="addEmoji('💛')">💛</span>
+                    <span onclick="addEmoji('💚')">💚</span>
+                    <span onclick="addEmoji('💙')">💙</span>
+                    <span onclick="addEmoji('🧸')">🧸</span>
+                    <span onclick="addEmoji('🦄')">🦄</span>
+                    <span onclick="addEmoji('🌈')">🌈</span>
+                    <span onclick="addEmoji('⭐')">⭐</span>
+                    <span onclick="addEmoji('🎮')">🎮</span>
+                    <span onclick="addEmoji('🎨')">🎨</span>
+                    <span onclick="addEmoji('🎵')">🎵</span>
+                    <span onclick="addEmoji('🍕')">🍕</span>
+                    <span onclick="addEmoji('🍦')">🍦</span>
+                    <span onclick="addEmoji('🎂')">🎂</span>
+                    <span onclick="addEmoji('🎈')">🎈</span>
+                    <span onclick="addEmoji('🎁')">🎁</span>
+                    <span onclick="addEmoji('🌸')">🌸</span>
+                    <span onclick="addEmoji('🦋')">🦋</span>
+                    <span onclick="addEmoji('🐱')">🐱</span>
+                    <span onclick="addEmoji('🐶')">🐶</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- نافذة محادثة جديدة -->
+        <div id="new-chat-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>💬 محادثة جديدة</h2>
+                    <button class="close-btn" onclick="hideNewChat()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" id="new-chat-name" placeholder="اسم الصديق..." class="modal-input">
+                    <input type="text" id="new-chat-peerid" placeholder="كود الصديق (رقم الاتصال)..." class="modal-input" oninput="validatePeerId(this)">
+                    <div class="avatar-selector">
+                        <h4>اختر صورة للصديق:</h4>
+                        <div class="avatar-options">
+                            <span class="avatar-option selected" onclick="selectAvatar(this, '🧒')">🧒</span>
+                            <span class="avatar-option" onclick="selectAvatar(this, '👧')">👧</span>
+                            <span class="avatar-option" onclick="selectAvatar(this, '🦄')">🦄</span>
+                            <span class="avatar-option" onclick="selectAvatar(this, '🐱')">🐱</span>
+                            <span class="avatar-option" onclick="selectAvatar(this, '🐶')">🐶</span>
+                            <span class="avatar-option" onclick="selectAvatar(this, '🐰')">🐰</span>
+                            <span class="avatar-option" onclick="selectAvatar(this, '🐻')">🐻</span>
+                            <span class="avatar-option" onclick="selectAvatar(this, '🐼')">🐼</span>
+                            <span class="avatar-option" onclick="selectAvatar(this, '🦁')">🦁</span>
+                            <span class="avatar-option" onclick="selectAvatar(this, '🐸')">🐸</span>
+                            <span class="avatar-option" onclick="selectAvatar(this, '🦊')">🦊</span>
+                            <span class="avatar-option" onclick="selectAvatar(this, '🐨')">🐨</span>
+                        </div>
+                    </div>
+                    <button class="create-chat-btn" onclick="createNewChat()">إنشاء محادثة 🎉</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- نافذة الإعدادات -->
+        <div id="settings-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>⚙️ الإعدادات</h2>
+                    <button class="close-btn" onclick="hideSettings()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-item">
+                        <span>🌟 الملف الشخصي</span>
+                        <div class="profile-section">
+                            <div class="my-avatar" id="my-avatar">🧒</div>
+                            <input type="text" id="my-name" placeholder="اسمك..." class="modal-input" onchange="updateMyName()">
+                        </div>
+                    </div>
+                    <div class="settings-item">
+                        <span>📞 كود الاتصال الخاص بي</span>
+                        <div class="profile-section">
+                            <input type="text" id="my-peerid" class="modal-input" readonly>
+                            <button class="copy-btn" onclick="copyMyPeerId()">📋</button>
+                        </div>
+                    </div>
+                    <div class="settings-item">
+                        <span>🎨 لون الثيم</span>
+                        <div class="theme-options">
+                            <button class="theme-btn rainbow" onclick="changeTheme('rainbow')">🌈 قوس قزح</button>
+                            <button class="theme-btn ocean" onclick="changeTheme('ocean')">🌊 المحيط</button>
+                            <button class="theme-btn forest" onclick="changeTheme('forest')">🌳 الغابة</button>
+                            <button class="theme-btn space" onclick="changeTheme('space')">🚀 الفضاء</button>
+                        </div>
+                    </div>
+                    <div class="settings-item">
+                        <span>🔔 الإشعارات</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="notifications-toggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="settings-item">
+                        <span>🔊 أصوات الرسائل</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="sounds-toggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- نافذة معلومات المحادثة -->
+        <div id="chat-info-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>ℹ️ معلومات المحادثة</h2>
+                    <button class="close-btn" onclick="hideChatInfo()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="chat-info-avatar" id="info-avatar"></div>
+                    <h3 id="info-name" class="chat-info-name"></h3>
+                    <div class="chat-info-stats">
+                        <div class="stat">
+                            <span class="stat-number" id="info-messages">0</span>
+                            <span class="stat-label">رسالة</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-number" id="info-emojis">0</span>
+                            <span class="stat-label">إيموجي</span>
+                        </div>
+                    </div>
+                    <button class="delete-chat-btn" onclick="deleteCurrentChat()">🗑️ حذف المحادثة</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- شاشة المكالمة -->
+    <div id="call-screen" class="call-screen hidden">
+        <div class="call-weather">
+            <span id="call-emoji">🔊</span>
+        </div>
+        <div class="call-top">
+            <div class="call-avatar big" id="call-avatar">🧒</div>
+            <h2 id="call-name"></h2>
+            <p id="call-status" class="call-status">جاري الاتصال...</p>
+            <p id="call-timer" class="call-timer hidden">00:00</p>
+        </div>
+
+        <!-- فيديو -->
+        <div id="video-container" class="video-container hidden">
+            <video id="local-video" autoplay playsinline muted></video>
+            <video id="remote-video" autoplay playsinline></video>
+        </div>
+
+        <div class="call-controls">
+            <div class="ctrl-group">
+                <button id="mute-btn" class="ctrl-btn active" onclick="toggleMute()">
+                    <span class="ctrl-icon">🎙️</span>
+                    <span class="ctrl-label">كتم</span>
+                </button>
+                <button id="video-btn" class="ctrl-btn active" onclick="toggleVideo()">
+                    <span class="ctrl-icon">📹</span>
+                    <span class="ctrl-label">فيديو</span>
+                </button>
+            </div>
+            <div class="ctrl-group">
+                <button id="accept-btn" class="ctrl-btn accept hidden" onclick="acceptCall()">
+                    <span class="ctrl-icon">📞</span>
+                    <span class="ctrl-label">رد</span>
+                </button>
+                <button class="ctrl-btn end" onclick="endCall()">
+                    <span class="ctrl-icon">📵</span>
+                    <span class="ctrl-label">إنهاء</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- رسالة الهاتف غير متصل -->
+        <div id="offline-notice" class="offline-notice hidden">
+            ⚠️ الصديق غير متصل الآن
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
