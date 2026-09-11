@@ -337,6 +337,10 @@ function setupPeer() {
         if (callerChat) {
             incomingCallName = callerChat.name;
             incomingCallAvatar = callerChat.avatar;
+            if (incomingCallPhoto) {
+                callerChat.avatarImg = incomingCallPhoto;
+                saveData();
+            }
         }
 
         showIncomingCallScreen();
@@ -417,12 +421,13 @@ function renderChatList() {
         const preview = lastMsg ? (lastMsg.sent ? 'أنت: ' : '') + lastMsg.text : 'بداية المحادثة';
         const time = lastMsg ? lastMsg.time : '';
         const avatar = getAvatarEmoji(chat.avatar);
+        const avatarImg = chat.avatarImg || '';
 
         const item = document.createElement('div');
         item.className = 'chat-item';
         item.onclick = () => openChat(chat.id);
         item.innerHTML = `
-            <div class="chat-avatar">${avatar}</div>
+            <div class="chat-avatar${avatarImg ? ' has-photo' : ''}">${avatarImg ? `<img src="${avatarImg}" alt="${escapeHtml(chat.name)}">` : avatar}</div>
             <div class="chat-info">
                 <h3>${escapeHtml(chat.name)}</h3>
                 <p class="chat-preview">${escapeHtml(preview)}</p>
@@ -463,7 +468,7 @@ function openChat(chatId) {
     document.querySelector('.fab-btn').style.display = 'none';
 
     document.getElementById('chat-name').textContent = chat.name;
-    document.getElementById('chat-avatar').textContent = getAvatarEmoji(chat.avatar);
+    renderAvatarInto(document.getElementById('chat-avatar'), chat.avatar, chat.avatarImg || '');
 
     // حالة الاتصال
     const statusEl = document.getElementById('online-status');
@@ -642,11 +647,12 @@ function searchChat(query) {
     filtered.forEach(chat => {
         const lastMsg = chat.messages[chat.messages.length - 1];
         const preview = lastMsg ? (lastMsg.sent ? 'أنت: ' : '') + lastMsg.text : '';
+        const avatarImg = chat.avatarImg || '';
         const item = document.createElement('div');
         item.className = 'chat-item';
         item.onclick = () => { hideSearch(); openChat(chat.id); };
         item.innerHTML = `
-            <div class="chat-avatar">${getAvatarEmoji(chat.avatar)}</div>
+            <div class="chat-avatar${avatarImg ? ' has-photo' : ''}">${avatarImg ? `<img src="${avatarImg}" alt="${escapeHtml(chat.name)}">` : getAvatarEmoji(chat.avatar)}</div>
             <div class="chat-info">
                 <h3>${escapeHtml(chat.name)}</h3>
                 <p class="chat-preview">${escapeHtml(preview)}</p>
