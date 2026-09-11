@@ -1577,6 +1577,72 @@ input:checked + .slider:before {
     pointer-events: none;
 }
 
+.welcome-tabs {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.welcome-tab {
+    flex: 1;
+    padding: 10px;
+    border: 3px solid var(--primary-light);
+    border-radius: var(--radius-sm);
+    background: white;
+    color: var(--text-dark);
+    font-family: 'Nunito', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.welcome-tab.active {
+    background: var(--bg-gradient);
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.welcome-small {
+    font-size: 13px;
+    margin-top: 15px;
+    margin-bottom: 0;
+}
+
+.logout-btn {
+    width: 100%;
+    padding: 14px;
+    margin-top: 15px;
+    border: 3px solid #E0245E;
+    border-radius: var(--radius-sm);
+    background: white;
+    color: #E0245E;
+    font-family: 'Nunito', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s;
+}
+
+.logout-btn:hover {
+    background: #E0245E;
+    color: white;
+}
+
+.settings-divider {
+    border: none;
+    margin: 15px 0;
+    height: 2px;
+    background: var(--primary-light);
+    opacity: 0.4;
+}
+
 .settings-hint {
     font-size: 13px;
     color: #999;

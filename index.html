@@ -23,18 +23,22 @@
         </div>
     </div>
 
-    <!-- شاشة اختيار اليوزر نيم -->
+    <!-- شاشة تسجيل الدخول -->
     <div id="welcome-screen" class="welcome-screen hidden">
         <div class="welcome-content">
             <div class="welcome-logo">🧸</div>
-            <h1>اختر يوزر نيم!</h1>
-            <p class="welcome-text">
-                هذا هو اسمك الذي يستخدمه أصدقاؤك لإضافتك ومكالمتك.
-                <br>اكتبه بحروف إنجليزية وأرقام فقط
-            </p>
-            <input type="text" id="welcome-username" class="welcome-input" placeholder="مثال: sara2015" maxlength="20" onkeypress="handleWelcomeEnter(event)" autocomplete="off">
+            <h1 id="welcome-title">أهلاً بك في واتساب أطفال! 🎈</h1>
+            <div class="welcome-tabs">
+                <button class="welcome-tab active" id="tab-login" onclick="setWelcomeMode('login')">دخول</button>
+                <button class="welcome-tab" id="tab-register" onclick="setWelcomeMode('register')">حساب جديد</button>
+            </div>
+            <p class="welcome-text" id="welcome-hint">ادخل يوزر نيمك وكلمة سرك للدخول</p>
+            <input type="text" id="welcome-username" class="welcome-input" placeholder="يوزر نيم (مثال: sara2015)" maxlength="20" onkeypress="handleWelcomeEnter(event)" autocomplete="off">
+            <input type="password" id="welcome-password" class="welcome-input" placeholder="كلمة السر" onkeypress="handleWelcomeEnter(event)" autocomplete="off">
+            <input type="password" id="welcome-password-confirm" class="welcome-input hidden" placeholder="أعد كتابة كلمة السر" onkeypress="handleWelcomeEnter(event)" autocomplete="off">
             <p id="welcome-error" class="welcome-error hidden"></p>
-            <button class="create-chat-btn" onclick="chooseUsername()" id="welcome-btn">ابدأ المغامرة! 🚀</button>
+            <button class="create-chat-btn" onclick="handleWelcomeSubmit()" id="welcome-btn">دخول 🚀</button>
+            <p class="welcome-text welcome-small">اليوزر نيم هو اسمك الذي يستخدمه أصدقاؤك لإضافتك ومكالمتك</p>
         </div>
     </div>
 
@@ -197,12 +201,15 @@
                     <div class="settings-item">
                         <span>👤 يوزر نيم الخاص بي</span>
                         <div class="profile-section">
-                            <input type="text" id="my-username" class="modal-input" maxlength="20" onkeypress="handleUsernameEnter(event)">
-                            <button class="copy-btn" onclick="saveUsername()" title="حفظ اليوزر نيم">💾</button>
+                            <input type="text" id="my-username" class="modal-input" readonly>
                             <button class="copy-btn" onclick="copyMyUsername()" title="نسخ اليوزر نيم">📋</button>
                         </div>
                     </div>
                     <p class="settings-hint">أرسل يوزر نيمك لأصدقائك ليكتبوه عند إضافة محادثة جديدة 📤</p>
+                    <button class="logout-btn" onclick="logout()">
+                        <span>🚪</span> تسجيل الخروج
+                    </button>
+                    <hr class="settings-divider">
                     <div class="settings-item">
                         <span>🎨 لون الثيم</span>
                         <div class="theme-options">

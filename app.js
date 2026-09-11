@@ -5,6 +5,9 @@ let myAvatarImg = '';
 let myUsername = '';
 let lastGoodUsername = '';
 let pendingUsername = null;
+let welcomeMode = 'login';
+let accounts = {};
+let authPending = false;
 let activeChatId = null;
 let selectedNewAvatar = '🧒';
 let currentTheme = 'rainbow';
@@ -39,40 +42,44 @@ const SOUNDS = {
 };
 
 // بيانات التطبيق
-let chats = [
-    {
-        id: 'c1',
-        name: 'سارة',
-        avatar: '👧',
-        username: '',
-        messages: [
-            { text: 'مرحباً! كيف حالك؟ 😊', sent: false, time: '10:30' },
-            { text: 'هل نحن أصدقاء بعد؟ 🌈', sent: false, time: '10:31' }
-        ],
-        unread: 2
-    },
-    {
-        id: 'c2',
-        name: 'أحمد',
-        avatar: '🐸',
-        username: '',
-        messages: [
-            { text: 'صل أنا! 🎮', sent: true, time: '09:15' },
-            { text: 'العب معي اللعبة الجديدة!', sent: false, time: '09:20' }
-        ],
-        unread: 1
-    },
-    {
-        id: 'c3',
-        name: 'ليلى',
-        avatar: '🦄',
-        username: '',
-        messages: [
-            { text: 'أحب الألوان الجميلة 🎨', sent: false, time: 'أمس' }
-        ],
-        unread: 0
-    }
-];
+function defaultChats() {
+    return [
+        {
+            id: 'c1',
+            name: 'سارة',
+            avatar: '👧',
+            username: '',
+            messages: [
+                { text: 'مرحباً! كيف حالك؟ 😊', sent: false, time: '10:30' },
+                { text: 'هل نحن أصدقاء بعد؟ 🌈', sent: false, time: '10:31' }
+            ],
+            unread: 2
+        },
+        {
+            id: 'c2',
+            name: 'أحمد',
+            avatar: '🐸',
+            username: '',
+            messages: [
+                { text: 'صل أنا! 🎮', sent: true, time: '09:15' },
+                { text: 'العب معي اللعبة الجديدة!', sent: false, time: '09:20' }
+            ],
+            unread: 1
+        },
+        {
+            id: 'c3',
+            name: 'ليلى',
+            avatar: '🦄',
+            username: '',
+            messages: [
+                { text: 'أحب الألوان الجميلة 🎨', sent: false, time: 'أمس' }
+            ],
+            unread: 0
+        }
+    ];
+}
+
+let chats = defaultChats();
 
 // رسائل الرد التلقائي الممتعة
 const AUTO_REPLIES = [
@@ -88,45 +95,111 @@ const AUTO_REPLIES = [
     'أغمض عينيك... مفاجأة! 🎁'
 ];
 
+// ===== الحسابات المحلية (يوزر نيم + كلمة سر) =====
+function getAccountsKey() {
+    return 'kidsAccounts';
+}
+
+function loadAccounts() {
+    try {
+        accounts = JSON.parse(localStorage.getItem(getAccountsKey())) || {};
+    } catch (e) {
+        accounts = {};
+    }
+}
+
+function saveAccounts() {
+    localStorage.setItem(getAccountsKey(), JSON.stringify(accounts));
+}
+
+function hashPassword(pass, salt) {
+    let h1 = 0xdeadbeef ^ salt;
+    let h2 = 0x41c6ce57 ^ salt;
+    const str = salt + '|' + pass;
+    for (let i = 0; i < str.length; i++) {
+        const ch = str.charCodeAt(i);
+        h1 = Math.imul(h1 ^ ch, 2654435761);
+        h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (h2 >>> 0).toString(16) + h1.toString(16).padStart(8, '0');
+}
+
+function getDataKey(username) {
+    return 'kidsData_' + (username ? username.toLowerCase() : 'default');
+}
+
+function getLegacyData(username) {
+    try {
+        const saved = JSON.parse(localStorage.getItem('kidsWhatsAppData'));
+        if (saved && username && saved.myUsername && saved.myUsername.toLowerCase() === username.toLowerCase()) {
+            return saved;
+        }
+    } catch (e) {}
+    return null;
+}
+
+function migrateChatsData(list) {
+    list.forEach(c => {
+        if (c.username === undefined) {
+            c.username = c.peerId || '';
+            delete c.peerId;
+        }
+    });
+}
+
 // ===== تهيئة التطبيق =====
 function init() {
-    loadData();
+    loadAccounts();
+    const session = localStorage.getItem('kidsSession');
     setTimeout(() => {
         document.getElementById('splash-screen').style.display = 'none';
-        document.getElementById('app').classList.remove('hidden');
-        renderChatList();
-        notifySetup();
-        if (!myUsername) {
+        if (session && accounts[session]) {
+            myUsername = accounts[session].username;
+            loadData();
+            document.getElementById('app').classList.remove('hidden');
+            applyTheme(currentTheme);
+            updateUsernameUI();
+            renderChatList();
+            notifySetup();
+            setupPeer();
+        } else {
+            setWelcomeMode('login');
             document.getElementById('welcome-screen').classList.remove('hidden');
             setTimeout(() => document.getElementById('welcome-username').focus(), 200);
-        } else {
-            setupPeer();
         }
     }, 2500);
 }
 
+function importLegacyData(legacy) {
+    myName = legacy.myName || myName;
+    myAvatar = legacy.myAvatar || myAvatar;
+    myAvatarImg = legacy.myAvatarImg || '';
+    myUsername = legacy.myUsername || myUsername;
+    currentTheme = legacy.currentTheme || 'rainbow';
+    notificationsEnabled = legacy.notificationsEnabled !== false;
+    soundsEnabled = legacy.soundsEnabled !== false;
+    if (Array.isArray(legacy.chats) && legacy.chats.length > 0) chats = legacy.chats;
+    migrateChatsData(chats);
+    localStorage.removeItem('kidsWhatsAppData');
+}
+
 function loadData() {
     try {
-        const saved = JSON.parse(localStorage.getItem('kidsWhatsAppData'));
+        const saved = JSON.parse(localStorage.getItem(getDataKey(myUsername)));
         if (saved) {
             myName = saved.myName || myName;
             myAvatar = saved.myAvatar || myAvatar;
             myAvatarImg = saved.myAvatarImg || '';
-            myUsername = saved.myUsername || '';
+            myUsername = saved.myUsername || myUsername;
             currentTheme = saved.currentTheme || 'rainbow';
             notificationsEnabled = saved.notificationsEnabled !== false;
             soundsEnabled = saved.soundsEnabled !== false;
             if (Array.isArray(saved.chats) && saved.chats.length > 0) chats = saved.chats;
         }
     } catch (e) { /* تجاهل الأخطاء */ }
-
-    // هجرة البيانات القديمة: الكود العشوائي → يوزر نيم
-    chats.forEach(c => {
-        if (c.username === undefined) {
-            c.username = c.peerId || '';
-            delete c.peerId;
-        }
-    });
+    migrateChatsData(chats);
 }
 
 function saveData() {
@@ -140,7 +213,7 @@ function saveData() {
         soundsEnabled: soundsEnabled,
         chats: chats
     };
-    localStorage.setItem('kidsWhatsAppData', JSON.stringify(data));
+    localStorage.setItem(getDataKey(myUsername), JSON.stringify(data));
 }
 
 // ===== اليوزر نيم =====
@@ -153,31 +226,41 @@ function showWelcomeError(msg) {
     el.textContent = msg;
     el.classList.remove('hidden');
     document.getElementById('welcome-btn').classList.remove('welcome-btn-loading');
-    document.getElementById('welcome-btn').textContent = 'ابدأ المغامرة! 🚀';
+    document.getElementById('welcome-btn').textContent = welcomeMode === 'register' ? 'إنشاء حساب 🎉' : 'دخول 🚀';
 }
 
 function handleWelcomeEnter(event) {
     if (event.key === 'Enter') {
         event.preventDefault();
-        chooseUsername();
+        handleWelcomeSubmit();
     }
 }
 
-function handleUsernameEnter(event) {
-    if (event.key === 'Enter') {
-        event.preventDefault();
-        saveUsername();
-    }
+function setWelcomeMode(mode) {
+    welcomeMode = mode;
+    const tabLogin = document.getElementById('tab-login');
+    const tabRegister = document.getElementById('tab-register');
+    if (tabLogin) tabLogin.classList.toggle('active', mode === 'login');
+    if (tabRegister) tabRegister.classList.toggle('active', mode === 'register');
+    const confirmEl = document.getElementById('welcome-password-confirm');
+    if (confirmEl) confirmEl.classList.toggle('hidden', mode !== 'register');
+    document.getElementById('welcome-hint').textContent = mode === 'register'
+        ? 'اختر يوزر نيم وكلمة سر جديدة'
+        : 'ادخل يوزر نيمك وكلمة سرك للدخول';
+    document.getElementById('welcome-title').textContent = mode === 'register'
+        ? 'أنشئ حسابك الجديد! 🎈'
+        : 'أهلاً بعودتك! 👋';
+    document.getElementById('welcome-btn').textContent = mode === 'register' ? 'إنشاء حساب 🎉' : 'دخول 🚀';
+    document.getElementById('welcome-error').classList.add('hidden');
 }
 
-function chooseUsername() {
-    const input = document.getElementById('welcome-username');
-    const name = input.value.trim();
-    const errEl = document.getElementById('welcome-error');
-    errEl.classList.add('hidden');
+function handleWelcomeSubmit() {
+    const name = document.getElementById('welcome-username').value.trim();
+    const pass = document.getElementById('welcome-password').value;
+    const confirm = document.getElementById('welcome-password-confirm').value;
 
     if (!name) {
-        showWelcomeError('✏️ اكتب يوزر نيم أولاً');
+        showWelcomeError('✏️ اكتب يوزر نيمك أولاً');
         return;
     }
     if (!isValidUsername(name)) {
@@ -185,36 +268,120 @@ function chooseUsername() {
         return;
     }
 
-    myUsername = name;
-    lastGoodUsername = '';
-    saveData();
-
-    const btn = document.getElementById('welcome-btn');
-    btn.classList.add('welcome-btn-loading');
-    btn.textContent = '⏳ جاري تجهيز حسابك...';
-
-    if (setupPeer()) return;
-    showWelcomeError('😢 تعذر الاتصال بخادم المكالمات، تحقق من الإنترنت وحاول مجدداً');
+    if (welcomeMode === 'login') {
+        const acc = accounts[name.toLowerCase()];
+        if (!acc) {
+            const legacy = getLegacyData(name);
+            if (legacy) {
+                registerAccount(name, pass, legacy);
+            } else {
+                setWelcomeMode('register');
+                showWelcomeError('😕 لا يوجد حساب بهذا اليوزر نيم. أنشئ حساباً جديداً');
+            }
+            return;
+        }
+        if (hashPassword(pass, acc.salt) !== acc.hash) {
+            showWelcomeError('❌ كلمة السر غير صحيحة، حاول مجدداً');
+            return;
+        }
+        myUsername = acc.username;
+        enterApp();
+    } else {
+        if (accounts[name.toLowerCase()]) {
+            setWelcomeMode('login');
+            showWelcomeError('😅 هذا اليوزر نيم موجود! ادخل كلمة السر للدخول');
+            return;
+        }
+        if (pass.length < 4) {
+            showWelcomeError('🔑 كلمة السر قصيرة - استخدم 4 أحرف أو أكثر');
+            return;
+        }
+        if (pass !== confirm) {
+            showWelcomeError('⚠️ كلمتا السر غير متطابقتين');
+            return;
+        }
+        registerAccount(name, pass, null);
+    }
 }
 
-function saveUsername() {
-    const input = document.getElementById('my-username');
-    const name = input.value.trim();
+function registerAccount(name, pass, legacy) {
+    const salt = Math.floor(Math.random() * 2147483647);
+    const key = name.toLowerCase();
+    accounts[key] = { username: name, salt: salt, hash: hashPassword(pass, salt) };
+    saveAccounts();
 
-    if (!isValidUsername(name)) {
-        showToast('😅 يوزر نيم يجب أن يكون بحروف إنجليزية وأرقام فقط، من 2 إلى 20 حرفاً');
-        return;
-    }
-    if (name.toLowerCase() === myUsername.toLowerCase()) {
-        showToast('👌 هذا هو يوزر نيمك الحالي');
-        return;
-    }
-
-    pendingUsername = { before: myUsername, after: name };
     myUsername = name;
+    if (legacy) importLegacyData(legacy);
+    loadData();
+    enterApp();
+}
+
+function enterApp() {
+    authPending = true;
+    localStorage.setItem('kidsSession', myUsername.toLowerCase());
+    document.getElementById('welcome-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    applyTheme(currentTheme);
+    updateUsernameUI();
+    renderChatList();
+    notifySetup();
     saveData();
-    showToast('⏳ جاري التحقق من توفر اليوزر نيم...');
-    restartPeer();
+    setupPeer();
+}
+
+function updateUsernameUI() {
+    const input = document.getElementById('my-username');
+    if (input && myUsername) {
+        input.value = myUsername.toUpperCase();
+        input.title = myUsername;
+    }
+}
+
+function logout() {
+    localStorage.removeItem('kidsSession');
+    if (peer) {
+        try { peer.destroy(); } catch (e) {}
+        peer = null;
+    }
+    if (currentCall) {
+        try { currentCall.close(); } catch (e) {}
+        currentCall = null;
+    }
+    if (incomingCall) {
+        try { incomingCall.close(); } catch (e) {}
+        incomingCall = null;
+    }
+    if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+    }
+    if (remoteStream) {
+        remoteStream.getTracks().forEach(t => t.stop());
+        remoteStream = null;
+    }
+    myName = 'أنا';
+    myAvatar = '🧒';
+    myAvatarImg = '';
+    myUsername = '';
+    currentTheme = 'rainbow';
+    notificationsEnabled = true;
+    soundsEnabled = true;
+    activeChatId = null;
+    chats = defaultChats();
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('settings-modal').classList.add('hidden');
+    document.getElementById('welcome-username').value = '';
+    document.getElementById('welcome-password').value = '';
+    document.getElementById('welcome-password-confirm').value = '';
+    setWelcomeMode('login');
+    document.getElementById('welcome-screen').classList.remove('hidden');
+    setTimeout(() => document.getElementById('welcome-username').focus(), 200);
+}
+
+function handleUsernameEnter(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+    }
 }
 
 function copyMyUsername() {
@@ -238,12 +405,21 @@ function selectAndCopy(id) {
     document.execCommand('copy');
 }
 
-function updateUsernameUI() {
-    const input = document.getElementById('my-username');
-    if (input && myUsername) input.value = myUsername;
-}
-
 function handleUsernameTaken() {
+    if (authPending) {
+        authPending = false;
+        if (peer) {
+            try { peer.destroy(); } catch (e) {}
+            peer = null;
+        }
+        localStorage.removeItem('kidsSession');
+        myUsername = '';
+        document.getElementById('app').classList.add('hidden');
+        document.getElementById('welcome-screen').classList.remove('hidden');
+        setWelcomeMode(welcomeMode);
+        showWelcomeError('😢 هذا اليوزر نيم مستخدم الآن على جهاز آخر. جرّب لاحقاً أو أنشئ يوزر نيم مختلفاً');
+        return;
+    }
     const welcome = document.getElementById('welcome-screen');
     if (welcome && !welcome.classList.contains('hidden')) {
         myUsername = '';
@@ -309,12 +485,16 @@ function setupPeer() {
     peer.on('open', (id) => {
         myUsername = id;
         lastGoodUsername = id;
+        const wasAuth = authPending;
+        authPending = false;
         saveData();
         updateUsernameUI();
 
         // إكمال اختيار اليوزر نيم
         const welcome = document.getElementById('welcome-screen');
-        if (welcome && !welcome.classList.contains('hidden')) {
+        if (wasAuth) {
+            showToast('مرحباً يا ' + myUsername + '! 🎉');
+        } else if (welcome && !welcome.classList.contains('hidden')) {
             welcome.classList.add('hidden');
             showToast('مرحباً يا ' + myUsername + '! 🎉');
         }
@@ -720,7 +900,7 @@ function showSettings() {
     document.getElementById('my-name').value = myName;
     renderMyAvatar();
     const unameEl = document.getElementById('my-username');
-    unameEl.value = myUsername || '';
+    unameEl.value = myUsername.toUpperCase();
     unameEl.placeholder = myUsername ? myUsername : 'اختر يوزر نيم...';
     document.getElementById('notifications-toggle').checked = notificationsEnabled;
     document.getElementById('sounds-toggle').checked = soundsEnabled;
@@ -820,19 +1000,19 @@ function handleAvatarUpload(event) {
 }
 
 function changeTheme(theme) {
-    const app = document.getElementById('app');
-
-    // إزالة الثيمات القديمة
-    document.body.classList.remove('theme-ocean', 'theme-forest', 'theme-space');
-    app.classList.remove('theme-ocean', 'theme-forest', 'theme-space');
-
-    currentTheme = theme;
-    if (theme !== 'rainbow') {
-        document.body.classList.add('theme-' + theme);
-        app.classList.add('theme-' + theme);
-    }
+    applyTheme(theme);
     saveData();
     showToast('🎨 تم تغيير الثيم!');
+}
+
+function applyTheme(theme) {
+    currentTheme = theme;
+    document.body.classList.remove('theme-ocean', 'theme-forest', 'theme-space');
+    document.getElementById('app').classList.remove('theme-ocean', 'theme-forest', 'theme-space');
+    if (theme !== 'rainbow') {
+        document.body.classList.add('theme-' + theme);
+        document.getElementById('app').classList.add('theme-' + theme);
+    }
 }
 
 // ===== معلومات المحادثة =====
