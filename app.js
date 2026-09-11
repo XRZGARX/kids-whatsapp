@@ -1,6 +1,7 @@
 // ===== المتغيرات العامة =====
 let myName = 'أنا';
 let myAvatar = '🧒';
+let myAvatarImg = '';
 let myUsername = '';
 let lastGoodUsername = '';
 let pendingUsername = null;
@@ -20,6 +21,7 @@ let callType = null; // 'audio' | 'video'
 let incomingCallType = 'audio';
 let incomingCallName = '';
 let incomingCallAvatar = '';
+let incomingCallPhoto = '';
 let isMuted = false;
 let isVideoOn = true;
 let callTimer = null;
@@ -109,6 +111,7 @@ function loadData() {
         if (saved) {
             myName = saved.myName || myName;
             myAvatar = saved.myAvatar || myAvatar;
+            myAvatarImg = saved.myAvatarImg || '';
             myUsername = saved.myUsername || '';
             currentTheme = saved.currentTheme || 'rainbow';
             notificationsEnabled = saved.notificationsEnabled !== false;
@@ -130,6 +133,7 @@ function saveData() {
     const data = {
         myName: myName,
         myAvatar: myAvatar,
+        myAvatarImg: myAvatarImg,
         myUsername: myUsername,
         currentTheme: currentTheme,
         notificationsEnabled: notificationsEnabled,
@@ -326,6 +330,7 @@ function setupPeer() {
         incomingCallType = meta.type === 'video' ? 'video' : 'audio';
         incomingCallName = meta.name || 'صديق';
         incomingCallAvatar = meta.avatar || '🧒';
+        incomingCallPhoto = meta.photo || '';
 
         // البحث عن المحادثة المقابلة عبر يوزر نيم المتصل
         const callerChat = chats.find(c => c.username && c.username.toLowerCase() === call.peer.toLowerCase());
@@ -707,7 +712,7 @@ function createNewChat() {
 // ===== الإعدادات =====
 function showSettings() {
     document.getElementById('my-name').value = myName;
-    document.getElementById('my-avatar').textContent = myAvatar;
+    renderMyAvatar();
     const unameEl = document.getElementById('my-username');
     unameEl.value = myUsername || '';
     unameEl.placeholder = myUsername ? myUsername : 'اختر يوزر نيم...';
@@ -727,6 +732,85 @@ function updateMyName() {
         saveData();
         showToast('✅ تم التحديث!');
     }
+}
+
+// ===== الصورة الشخصية =====
+function renderMyAvatar() {
+    const el = document.getElementById('my-avatar');
+    if (!el) return;
+    if (myAvatarImg) {
+        el.innerHTML = '<img src="' + myAvatarImg + '" alt="صورتي">';
+        el.classList.add('has-photo');
+    } else {
+        el.textContent = getAvatarEmoji(myAvatar) || myAvatar;
+        el.classList.remove('has-photo');
+    }
+}
+
+const MY_AVATAR_CHOICES = ['🧒', '👧', '🦄', '🐱', '🐶', '🐰', '🐻', '🐼', '🦁', '🐸', '🦊', '🐨', '🦋', '🌸', '🌟', '🍓'];
+
+function openAvatarPicker() {
+    const grid = document.getElementById('my-avatar-options');
+    grid.innerHTML = '';
+    MY_AVATAR_CHOICES.forEach(emoji => {
+        const span = document.createElement('span');
+        span.className = 'avatar-option';
+        span.textContent = emoji;
+        if (emoji === myAvatar && !myAvatarImg) span.classList.add('selected');
+        span.onclick = () => selectMyAvatar(span, emoji);
+        grid.appendChild(span);
+    });
+    document.getElementById('avatar-picker-modal').classList.remove('hidden');
+}
+
+function hideAvatarPicker() {
+    document.getElementById('avatar-picker-modal').classList.add('hidden');
+}
+
+function selectMyAvatar(el, emoji) {
+    myAvatar = emoji;
+    myAvatarImg = '';
+    saveData();
+    renderMyAvatar();
+    hideAvatarPicker();
+    showToast('🎨 تم تحديث صورتك!');
+}
+
+function handleAvatarUpload(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    if (!file.type || !file.type.startsWith('image/')) {
+        showToast('😅 هذا الملف ليس صورة');
+        event.target.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const size = 256;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, size, size);
+            myAvatarImg = canvas.toDataURL('image/jpeg', 0.85);
+            myAvatar = '🧒';
+            saveData();
+            renderMyAvatar();
+            hideAvatarPicker();
+            event.target.value = '';
+            showToast('📷 تم تحديث صورتك!');
+        };
+        img.onerror = () => {
+            showToast('😅 تعذر قراءة الصورة');
+            event.target.value = '';
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
 }
 
 function changeTheme(theme) {
@@ -865,10 +949,20 @@ function stopWeatherAnimation() {
     }
 }
 
-function showCallScreenBase(name, avatar) {
+function renderAvatarInto(el, avatar, photo) {
+    if (photo) {
+        el.innerHTML = '<img src="' + photo + '" alt="صورة">';
+        el.classList.add('has-photo');
+    } else {
+        el.textContent = getAvatarEmoji(avatar) || avatar;
+        el.classList.remove('has-photo');
+    }
+}
+
+function showCallScreenBase(name, avatar, photo) {
     const el = getCallElements();
     el.screen.classList.remove('hidden');
-    el.avatar.textContent = getAvatarEmoji(avatar) || avatar;
+    renderAvatarInto(el.avatar, avatar, photo || '');
     el.name.textContent = name;
     el.timer.textContent = '00:00';
     el.timer.classList.add('hidden');
@@ -881,7 +975,7 @@ function showCallScreenBase(name, avatar) {
 
 // شاشة مكالمة خارجة
 function showOutgoingCallScreen(name, avatar, type) {
-    const el = showCallScreenBase(name, avatar);
+    const el = showCallScreenBase(name, avatar, '');
     el.screen.classList.remove('ringing');
     el.screen.classList.add('outgoing');
     el.status.textContent = type === 'video' ? 'جاري الاتصال بفيديو 🎥...' : 'جاري الاتصال...';
@@ -894,7 +988,7 @@ function showOutgoingCallScreen(name, avatar, type) {
 
 // شاشة مكالمة واردة
 function showIncomingCallScreen() {
-    const el = showCallScreenBase(incomingCallName, incomingCallAvatar);
+    const el = showCallScreenBase(incomingCallName, incomingCallAvatar, incomingCallPhoto);
     el.screen.classList.remove('outgoing');
     el.screen.classList.add('ringing');
     el.status.textContent = incomingCallType === 'video' ? '🎥 يريد فيديو معك!' : 'يريد التحدث معك!';
@@ -967,7 +1061,7 @@ function startCall(type) {
         .then(stream => {
             localStream = stream;
             const call = peer.call(chat.username, stream, {
-                metadata: { type: type, name: myName, avatar: myAvatar }
+                metadata: { type: type, name: myName, avatar: myAvatar, photo: myAvatarImg || '' }
             });
             currentCall = call;
             setupCallHandlers(call, chat);
