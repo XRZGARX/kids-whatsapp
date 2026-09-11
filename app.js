@@ -1,7 +1,9 @@
 // ===== المتغيرات العامة =====
 let myName = 'أنا';
 let myAvatar = '🧒';
-let myPeerId = '';
+let myUsername = '';
+let lastGoodUsername = '';
+let pendingUsername = null;
 let activeChatId = null;
 let selectedNewAvatar = '🧒';
 let currentTheme = 'rainbow';
@@ -40,7 +42,7 @@ let chats = [
         id: 'c1',
         name: 'سارة',
         avatar: '👧',
-        peerId: '',
+        username: '',
         messages: [
             { text: 'مرحباً! كيف حالك؟ 😊', sent: false, time: '10:30' },
             { text: 'هل نحن أصدقاء بعد؟ 🌈', sent: false, time: '10:31' }
@@ -51,7 +53,7 @@ let chats = [
         id: 'c2',
         name: 'أحمد',
         avatar: '🐸',
-        peerId: '',
+        username: '',
         messages: [
             { text: 'صل أنا! 🎮', sent: true, time: '09:15' },
             { text: 'العب معي اللعبة الجديدة!', sent: false, time: '09:20' }
@@ -62,7 +64,7 @@ let chats = [
         id: 'c3',
         name: 'ليلى',
         avatar: '🦄',
-        peerId: '',
+        username: '',
         messages: [
             { text: 'أحب الألوان الجميلة 🎨', sent: false, time: 'أمس' }
         ],
@@ -87,12 +89,17 @@ const AUTO_REPLIES = [
 // ===== تهيئة التطبيق =====
 function init() {
     loadData();
-    setupPeer();
     setTimeout(() => {
         document.getElementById('splash-screen').style.display = 'none';
         document.getElementById('app').classList.remove('hidden');
         renderChatList();
         notifySetup();
+        if (!myUsername) {
+            document.getElementById('welcome-screen').classList.remove('hidden');
+            setTimeout(() => document.getElementById('welcome-username').focus(), 200);
+        } else {
+            setupPeer();
+        }
     }, 2500);
 }
 
@@ -102,53 +109,215 @@ function loadData() {
         if (saved) {
             myName = saved.myName || myName;
             myAvatar = saved.myAvatar || myAvatar;
+            myUsername = saved.myUsername || '';
             currentTheme = saved.currentTheme || 'rainbow';
             notificationsEnabled = saved.notificationsEnabled !== false;
             soundsEnabled = saved.soundsEnabled !== false;
             if (Array.isArray(saved.chats) && saved.chats.length > 0) chats = saved.chats;
         }
     } catch (e) { /* تجاهل الأخطاء */ }
+
+    // هجرة البيانات القديمة: الكود العشوائي → يوزر نيم
+    chats.forEach(c => {
+        if (c.username === undefined) {
+            c.username = c.peerId || '';
+            delete c.peerId;
+        }
+    });
 }
 
 function saveData() {
     const data = {
         myName: myName,
         myAvatar: myAvatar,
+        myUsername: myUsername,
         currentTheme: currentTheme,
         notificationsEnabled: notificationsEnabled,
         soundsEnabled: soundsEnabled,
-        myPeerId: myPeerId,
         chats: chats
     };
     localStorage.setItem('kidsWhatsAppData', JSON.stringify(data));
 }
 
-// ===== إعداد PeerJS =====
-function setupPeer() {
-    const savedId = localStorage.getItem('kidsWaPeerId');
-    if (savedId) {
-        myPeerId = savedId;
-    } else {
-        myPeerId = 'kids-wa-' + Math.random().toString(36).slice(2, 10);
-        localStorage.setItem('kidsWaPeerId', myPeerId);
+// ===== اليوزر نيم =====
+function isValidUsername(name) {
+    return /^[a-zA-Z0-9][a-zA-Z0-9_-]{1,19}$/.test(name);
+}
+
+function showWelcomeError(msg) {
+    const el = document.getElementById('welcome-error');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    document.getElementById('welcome-btn').classList.remove('welcome-btn-loading');
+    document.getElementById('welcome-btn').textContent = 'ابدأ المغامرة! 🚀';
+}
+
+function handleWelcomeEnter(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        chooseUsername();
+    }
+}
+
+function handleUsernameEnter(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        saveUsername();
+    }
+}
+
+function chooseUsername() {
+    const input = document.getElementById('welcome-username');
+    const name = input.value.trim();
+    const errEl = document.getElementById('welcome-error');
+    errEl.classList.add('hidden');
+
+    if (!name) {
+        showWelcomeError('✏️ اكتب يوزر نيم أولاً');
+        return;
+    }
+    if (!isValidUsername(name)) {
+        showWelcomeError('😅 يوزر نيم يجب أن يكون بحروف إنجليزية وأرقام فقط، بدون مسافات، من 2 إلى 20 حرفاً');
+        return;
     }
 
-    peer = new Peer(myPeerId, {
-        config: {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-                { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-                { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
-            ]
+    myUsername = name;
+    lastGoodUsername = '';
+    saveData();
+
+    const btn = document.getElementById('welcome-btn');
+    btn.classList.add('welcome-btn-loading');
+    btn.textContent = '⏳ جاري تجهيز حسابك...';
+
+    if (setupPeer()) return;
+    showWelcomeError('😢 تعذر الاتصال بخادم المكالمات، تحقق من الإنترنت وحاول مجدداً');
+}
+
+function saveUsername() {
+    const input = document.getElementById('my-username');
+    const name = input.value.trim();
+
+    if (!isValidUsername(name)) {
+        showToast('😅 يوزر نيم يجب أن يكون بحروف إنجليزية وأرقام فقط، من 2 إلى 20 حرفاً');
+        return;
+    }
+    if (name.toLowerCase() === myUsername.toLowerCase()) {
+        showToast('👌 هذا هو يوزر نيمك الحالي');
+        return;
+    }
+
+    pendingUsername = { before: myUsername, after: name };
+    myUsername = name;
+    saveData();
+    showToast('⏳ جاري التحقق من توفر اليوزر نيم...');
+    restartPeer();
+}
+
+function copyMyUsername() {
+    const username = document.getElementById('my-username').value;
+    if (navigator.clipboard && username) {
+        navigator.clipboard.writeText(username).then(() => {
+            showToast('📋 تم نسخ يوزر نيمك! أرسله لأصدقائك');
+        }).catch(() => {
+            selectAndCopy('my-username');
+        });
+    } else {
+        selectAndCopy('my-username');
+        showToast('📋 تم نسخ يوزر نيمك!');
+    }
+}
+
+function selectAndCopy(id) {
+    const input = document.getElementById(id);
+    input.select();
+    input.setSelectionRange(0, 9999);
+    document.execCommand('copy');
+}
+
+function updateUsernameUI() {
+    const input = document.getElementById('my-username');
+    if (input && myUsername) input.value = myUsername;
+}
+
+function handleUsernameTaken() {
+    const welcome = document.getElementById('welcome-screen');
+    if (welcome && !welcome.classList.contains('hidden')) {
+        myUsername = '';
+        lastGoodUsername = '';
+        saveData();
+        showWelcomeError('😢 هذا اليوزر نيم مستخدم من شخص آخر! اختر يوزر نيم آخر');
+        return;
+    }
+    if (pendingUsername) {
+        myUsername = pendingUsername.before;
+        saveData();
+        pendingUsername = null;
+        restartPeer();
+        showToast('⚠️ هذا اليوزر نيم مستخدم - تم الاحتفاظ بيوزر نيمك القديم');
+    }
+}
+
+function handleUserFacingUsernameError(err) {
+    if (err.type === 'invalid-id' || err.type === 'invalid-key') {
+        const welcome = document.getElementById('welcome-screen');
+        if (welcome && !welcome.classList.contains('hidden')) {
+            showWelcomeError('😅 يوزر نيم يجب أن يكون بحروف إنجليزية وأرقام فقط');
+        } else {
+            showToast('😅 يوزر نيم غير صالح - استخدم حروفاً إنجليزية وأرقاماً');
+            handleUsernameTaken();
         }
-    });
+    }
+}
+
+// ===== إعداد PeerJS =====
+let peerGen = 0;
+
+function restartPeer() {
+    peerGen++;
+    if (peer) {
+        try { peer.destroy(); } catch (e) {}
+        peer = null;
+    }
+    setupPeer();
+}
+
+function setupPeer() {
+    if (!myUsername) return false;
+    const gen = ++peerGen;
+
+    try {
+        peer = new Peer(myUsername, {
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+                    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+                    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+                ]
+            }
+        });
+    } catch (e) {
+        console.log('Peer setup error:', e);
+        return false;
+    }
 
     peer.on('open', (id) => {
-        myPeerId = id;
-        localStorage.setItem('kidsWaPeerId', id);
-        updatePeerIdUI();
+        myUsername = id;
+        lastGoodUsername = id;
+        saveData();
+        updateUsernameUI();
+
+        // إكمال اختيار اليوزر نيم
+        const welcome = document.getElementById('welcome-screen');
+        if (welcome && !welcome.classList.contains('hidden')) {
+            welcome.classList.add('hidden');
+            showToast('مرحباً يا ' + myUsername + '! 🎉');
+        }
+        if (pendingUsername) {
+            pendingUsername = null;
+            showToast('✅ تم تغيير يوزر نيمك بنجاح!');
+        }
     });
 
     peer.on('call', (call) => {
@@ -158,8 +327,8 @@ function setupPeer() {
         incomingCallName = meta.name || 'صديق';
         incomingCallAvatar = meta.avatar || '🧒';
 
-        // البحث عن المحادثة المقابلة
-        const callerChat = chats.find(c => c.peerId === call.peer);
+        // البحث عن المحادثة المقابلة عبر يوزر نيم المتصل
+        const callerChat = chats.find(c => c.username && c.username.toLowerCase() === call.peer.toLowerCase());
         if (callerChat) {
             incomingCallName = callerChat.name;
             incomingCallAvatar = callerChat.avatar;
@@ -171,11 +340,10 @@ function setupPeer() {
 
     peer.on('error', (err) => {
         if (err.type === 'unavailable-id') {
-            const newId = 'kids-wa-' + Math.random().toString(36).slice(2, 10);
-            localStorage.setItem('kidsWaPeerId', newId);
-            myPeerId = newId;
-            setupPeer();
-        } else if (err.type === 'peer-unavailable' || err.type === 'unavailable-id') {
+            handleUsernameTaken();
+        } else if (err.type === 'invalid-id' || err.type === 'invalid-key') {
+            handleUserFacingUsernameError(err);
+        } else if (err.type === 'peer-unavailable') {
             showToast('⚠️ الصديق غير متصل الآن');
             if (!callConnected && document.getElementById('call-screen') && !document.getElementById('call-screen').classList.contains('hidden')) {
                 endCallCleanup(false);
@@ -183,7 +351,7 @@ function setupPeer() {
         } else if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error' || err.type === 'socket-closed') {
             // حاول إعادة الاتصال تلقائياً
             if (peer && !peer.destroyed) {
-                setTimeout(() => peer.reconnect(), 3000);
+                setTimeout(() => { try { peer.reconnect(); } catch (e) {} }, 3000);
             }
         } else if (err.type === 'browser-incompatible') {
             showToast('⚠️ متصفحك لا يدعم المكالمات');
@@ -192,7 +360,7 @@ function setupPeer() {
     });
 
     peer.on('disconnected', () => {
-        if (peer && !peer.destroyed) {
+        if (peer && !peer.destroyed && myUsername) {
             setTimeout(() => {
                 try { peer.reconnect(); } catch (e) {}
             }, 2000);
@@ -200,8 +368,12 @@ function setupPeer() {
     });
 
     peer.on('close', () => {
-        setupPeer();
+        if (gen !== peerGen) return;
+        peer = null;
+        if (myUsername) setupPeer();
     });
+
+    return true;
 }
 
 // ===== الإشعارات =====
@@ -290,10 +462,10 @@ function openChat(chatId) {
 
     // حالة الاتصال
     const statusEl = document.getElementById('online-status');
-    if (chat.peerId) {
-        statusEl.textContent = 'اتصال بالمكالمات متاح 📞';
+    if (chat.username) {
+        statusEl.textContent = 'يوزر نيم: ' + chat.username + ' 📞';
     } else {
-        statusEl.textContent = 'متصل الآن 🟢';
+        statusEl.textContent = 'أضف يوزر نيمه للمكالمات ✏️';
     }
 
     renderMessages();
@@ -379,7 +551,7 @@ function sendMessage() {
     document.getElementById('emoji-picker').classList.add('hidden');
 
     // الرد التلقائي من الأصدقاء التجريبيين
-    if (!chat.peerId && Math.random() > 0.3) {
+    if (!chat.username && Math.random() > 0.3) {
         showTypingIndicator();
         const delay = 2000 + Math.random() * 3000;
         setTimeout(() => {
@@ -486,7 +658,7 @@ function searchChat(query) {
 function showNewChat() {
     selectedNewAvatar = '🧒';
     document.getElementById('new-chat-name').value = '';
-    document.getElementById('new-chat-peerid').value = '';
+    document.getElementById('new-chat-username').value = '';
     document.getElementById('new-chat-modal').classList.remove('hidden');
 }
 
@@ -500,15 +672,19 @@ function selectAvatar(el, emoji) {
     selectedNewAvatar = emoji;
 }
 
-function validatePeerId(input) {
+function validateUsername(input) {
     input.value = input.value.replace(/[^a-zA-Z0-9-_]/g, '');
 }
 
 function createNewChat() {
     const name = document.getElementById('new-chat-name').value.trim();
-    const peerId = document.getElementById('new-chat-peerid').value.trim();
+    const username = document.getElementById('new-chat-username').value.trim();
     if (!name) {
         showToast('📝 أدخل اسم الصديق أولاً');
+        return;
+    }
+    if (username && !isValidUsername(username)) {
+        showToast('😅 يوزر نيم الصديق يجب أن يكون بحروف إنجليزية وأرقام فقط، من 2 إلى 20 حرفاً');
         return;
     }
 
@@ -516,7 +692,7 @@ function createNewChat() {
         id: 'c' + Date.now(),
         name: name,
         avatar: selectedNewAvatar,
-        peerId: peerId,
+        username: username,
         messages: [],
         unread: 0
     };
@@ -532,7 +708,9 @@ function createNewChat() {
 function showSettings() {
     document.getElementById('my-name').value = myName;
     document.getElementById('my-avatar').textContent = myAvatar;
-    document.getElementById('my-peerid').value = myPeerId || 'جاري التحميل...';
+    const unameEl = document.getElementById('my-username');
+    unameEl.value = myUsername || '';
+    unameEl.placeholder = myUsername ? myUsername : 'اختر يوزر نيم...';
     document.getElementById('notifications-toggle').checked = notificationsEnabled;
     document.getElementById('sounds-toggle').checked = soundsEnabled;
     document.getElementById('settings-modal').classList.remove('hidden');
@@ -549,25 +727,6 @@ function updateMyName() {
         saveData();
         showToast('✅ تم التحديث!');
     }
-}
-
-function copyMyPeerId() {
-    const peerId = document.getElementById('my-peerid').value;
-    if (navigator.clipboard && peerId) {
-        navigator.clipboard.writeText(peerId).then(() => {
-            showToast('📋 تم نسخ الكود! شاركه مع صديقك');
-        });
-    } else {
-        const input = document.getElementById('my-peerid');
-        input.select();
-        document.execCommand('copy');
-        showToast('📋 تم نسخ الكود!');
-    }
-}
-
-function updatePeerIdUI() {
-    const input = document.getElementById('my-peerid');
-    if (input && myPeerId) input.value = myPeerId;
 }
 
 function changeTheme(theme) {
@@ -787,8 +946,8 @@ function startCall(type) {
     const chat = getActiveChat();
     if (!chat) return;
 
-    if (!chat.peerId) {
-        showToast('📞 أضف "كود الصديق" من قائمة المحادثة لأجراء المكالمات');
+    if (!chat.username) {
+        showToast('📞 اكتب "يوزر نيم الصديق" عند إضافة المحادثة لإجراء المكالمات');
         return;
     }
     if (!peer || !peer.open) {
@@ -807,7 +966,7 @@ function startCall(type) {
     navigator.mediaDevices.getUserMedia(constraints)
         .then(stream => {
             localStream = stream;
-            const call = peer.call(chat.peerId, stream, {
+            const call = peer.call(chat.username, stream, {
                 metadata: { type: type, name: myName, avatar: myAvatar }
             });
             currentCall = call;

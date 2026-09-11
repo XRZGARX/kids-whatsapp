@@ -1419,3 +1419,90 @@ input:checked + .slider:before {
         transform: translateX(-50%) translateY(0);
     }
 }
+
+/* شاشة اختيار اليوزر نيم */
+.welcome-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(160deg, #FF6B9D 0%, #845EF7 50%, #51CF66 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 900;
+    animation: fadeIn 0.4s ease;
+}
+
+.welcome-content {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 30px 25px;
+    width: 90%;
+    max-width: 380px;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+    animation: scaleIn 0.4s ease;
+}
+
+.welcome-logo {
+    font-size: 70px;
+    margin-bottom: 10px;
+    animation: bounce 1.5s ease infinite;
+    display: inline-block;
+}
+
+.welcome-content h1 {
+    font-size: 26px;
+    color: var(--text-dark);
+    margin-bottom: 10px;
+}
+
+.welcome-text {
+    font-size: 15px;
+    color: #777;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.welcome-input {
+    width: 100%;
+    padding: 15px 20px;
+    border: 3px solid var(--primary-light);
+    border-radius: var(--radius-sm);
+    font-size: 18px;
+    font-weight: 700;
+    font-family: 'Nunito', sans-serif;
+    text-align: center;
+    outline: none;
+    direction: ltr;
+    transition: border-color 0.3s;
+    margin-bottom: 15px;
+}
+
+.welcome-input:focus {
+    border-color: var(--primary);
+}
+
+.welcome-error {
+    color: #E0245E;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding: 10px;
+    background: #FFE5EC;
+    border-radius: 10px;
+}
+
+.welcome-btn-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.settings-hint {
+    font-size: 13px;
+    color: #999;
+    padding: 10px 0 0;
+    line-height: 1.5;
+}
